@@ -1,0 +1,37 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: support_agent
+      POSTGRES_USER: support
+      POSTGRES_PASSWORD: support
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U support -d support_agent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - pgvector-data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      SUPPORT_AGENT_ENVIRONMENT: production
+      SUPPORT_AGENT_VECTOR_STORE_BACKEND: postgres
+      SUPPORT_AGENT_DATABASE_URL: postgresql://support:support@db:5432/support_agent
+      SUPPORT_AGENT_LLM_MODEL: mock://support
+      SUPPORT_AGENT_LLM_PROVIDER: mock
+      SUPPORT_AGENT_PROMPT_VERSION: v2
+    volumes:
+      - ./data:/app/data
+
+volumes:
+  pgvector-data:
