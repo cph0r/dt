@@ -33,6 +33,7 @@ Client
 - Prompt registry: versioned prompts for A/B testing.
 - Evaluation module: offline scoring and feedback capture.
 - Storage: vector DB plus chunk metadata.
+- In production: Postgres with pgvector in Docker Compose.
 
 ### Data Flow
 
@@ -203,6 +204,7 @@ Implemented in the repository:
 - Retriever with similarity search and metadata filtering.
 - Structure-aware chunking.
 - Structured JSON logging.
+- Dockerized Postgres + pgvector stack with init script.
 
 ## 5. Prompt Versioning System
 
@@ -301,5 +303,6 @@ Format:
 
 - Install dependencies with `pip install -e .`.
 - Install LiteLLM separately if you want live provider calls: `pip install litellm`.
+- Start the production stack with `docker compose up --build`.
 - Run the app with `uvicorn app.main:app --reload`.
 - Run tests with `pytest`.

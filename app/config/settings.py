@@ -10,6 +10,8 @@ class Settings(BaseSettings):
 
     app_name: str = "support-agentic-rag"
     environment: str = "local"
+    vector_store_backend: str = "sqlite"
+    database_url: str = "postgresql://support:support@localhost:5432/support_agent"
     llm_provider: str = "openai"
     llm_model: str = "gpt-4o-mini"
     llm_temperature: float = 0.0
@@ -17,6 +19,7 @@ class Settings(BaseSettings):
     llm_retry_count: int = 2
     retrieval_top_k: int = 4
     vector_store_path: str = "./data/vector_store.sqlite3"
+    pgvector_dimension: int = 64
     confidence_threshold: float = 0.62
     max_agent_steps: int = 4
     enable_reranking: bool = False

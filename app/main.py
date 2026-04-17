@@ -11,7 +11,7 @@ from app.prompts.registry import get_prompt
 from app.services.agent import Agent
 from app.services.llm import LLMClient, LiteLLMBackend
 from app.services.retriever import Retriever
-from app.services.vector_store import SQLiteVectorStore
+from app.services.vector_store import PgVectorStore, SQLiteVectorStore
 from app.tools.base import ToolRegistry
 from app.tools.knowledge_base import SearchDocsTool
 from app.tools.ticketing import CreateTicketTool
@@ -22,7 +22,10 @@ def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings.log_level)
 
-    store = SQLiteVectorStore(settings.vector_store_path)
+    if settings.vector_store_backend == "postgres":
+        store = PgVectorStore(settings.database_url, dimension=settings.pgvector_dimension)
+    else:
+        store = SQLiteVectorStore(settings.vector_store_path)
     retriever = Retriever(store=store)
     chunker = ChunkingPipeline()
     if store.count() == 0:
