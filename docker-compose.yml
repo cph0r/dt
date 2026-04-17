@@ -1,0 +1,15 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      SUPPORT_AGENT_ENVIRONMENT: production
+      SUPPORT_AGENT_LLM_MODEL: mock://support
+      SUPPORT_AGENT_LLM_PROVIDER: mock
+      SUPPORT_AGENT_VECTOR_STORE_PATH: /data/vector_store.sqlite3
+    volumes:
+      - support-agent-data:/data
+
+volumes:
+  support-agent-data:

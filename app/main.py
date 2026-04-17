@@ -7,11 +7,11 @@ from app.api.routes import get_agent
 from app.config.settings import get_settings
 from app.evaluation.evaluator import Evaluator
 from app.ingestion.chunking import ChunkingPipeline
-from app.models.schemas import DocumentChunk
 from app.prompts.registry import get_prompt
 from app.services.agent import Agent
 from app.services.llm import LLMClient, LiteLLMBackend
 from app.services.retriever import Retriever
+from app.services.vector_store import SQLiteVectorStore
 from app.tools.base import ToolRegistry
 from app.tools.knowledge_base import SearchDocsTool
 from app.tools.ticketing import CreateTicketTool
@@ -22,23 +22,25 @@ def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings.log_level)
 
-    retriever = Retriever()
+    store = SQLiteVectorStore(settings.vector_store_path)
+    retriever = Retriever(store=store)
     chunker = ChunkingPipeline()
-    sample_docs = chunker.chunk(
-        source="help_center",
-        text=(
-            "# Refunds\n\nRefunds are processed within 5 business days.\n\n"
-            "# Password Reset\n\nUse the reset link on the sign in page to reset your password."
-        ),
-    )
-    retriever.index(sample_docs)
+    if store.count() == 0:
+        sample_docs = chunker.chunk(
+            source="help_center",
+            text=(
+                "# Refunds\n\nRefunds are processed within 5 business days.\n\n"
+                "# Password Reset\n\nUse the reset link on the sign in page to reset your password."
+            ),
+        )
+        retriever.index(sample_docs)
 
     tools = ToolRegistry()
     tools.register(SearchDocsTool(retriever=retriever))
     tools.register(CreateTicketTool())
 
     llm = LLMClient(
-        backend=LiteLLMBackend(),
+        backend=LiteLLMBackend(provider=settings.llm_provider),
         model=settings.llm_model,
         retry_count=settings.llm_retry_count,
         timeout_s=settings.llm_timeout_s,

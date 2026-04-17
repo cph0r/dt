@@ -300,5 +300,6 @@ Format:
 ## Run Notes
 
 - Install dependencies with `pip install -e .`.
+- Install LiteLLM separately if you want live provider calls: `pip install litellm`.
 - Run the app with `uvicorn app.main:app --reload`.
 - Run tests with `pytest`.

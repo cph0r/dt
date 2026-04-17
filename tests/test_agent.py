@@ -1,8 +1,12 @@
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
 from app.evaluation.evaluator import Evaluator
 from app.models.schemas import AgentDecision
 from app.services.agent import Agent
 from app.services.llm import LLMClient, LiteLLMBackend
 from app.services.retriever import Retriever
+from app.services.vector_store import SQLiteVectorStore
 from app.tools.base import ToolRegistry
 from app.tools.knowledge_base import SearchDocsTool
 from app.tools.ticketing import CreateTicketTool
@@ -15,18 +19,22 @@ class LowConfidenceBackend(LiteLLMBackend):
 
 
 def build_agent():
-    retriever = Retriever()
+    temp_dir = TemporaryDirectory()
+    database_path = Path(temp_dir.name) / "agent.sqlite3"
+    retriever = Retriever(store=SQLiteVectorStore(str(database_path)))
     retriever.index(ChunkingPipeline().chunk("kb", "# Password Reset\n\nUse the reset link on the sign in page."))
     tools = ToolRegistry()
     tools.register(SearchDocsTool(retriever=retriever))
     tools.register(CreateTicketTool())
-    return Agent(
+    agent = Agent(
         llm=LLMClient(LowConfidenceBackend(), model="test", retry_count=0, timeout_s=1),
         tools=tools,
         evaluator=Evaluator(threshold=0.6),
         max_steps=2,
         confidence_threshold=0.8,
     )
+    agent._temp_dir = temp_dir
+    return agent
 
 
 def test_agent_falls_back_to_ticket_when_confidence_low():

@@ -1,0 +1,6 @@
+.venv
+.pytest_cache
+__pycache__
+.git
+.gitignore
+support_agentic_rag.egg-info

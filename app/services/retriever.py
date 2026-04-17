@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Iterable, Sequence
 
 from app.models.schemas import DocumentChunk, RetrievalResult
+from app.services.vector_store import SQLiteVectorStore
 
 
 class Embedder:
@@ -22,7 +23,7 @@ class Embedder:
 
 @dataclass
 class Retriever:
-    chunks: list[DocumentChunk] = field(default_factory=list)
+    store: SQLiteVectorStore
     embedder: Embedder = field(default_factory=Embedder)
 
     def index(self, chunks: Sequence[DocumentChunk]) -> None:
@@ -31,7 +32,7 @@ class Retriever:
             if not chunk.embedding:
                 chunk.embedding = self.embedder.embed(chunk.content)
             indexed.append(chunk)
-        self.chunks = indexed
+        self.store.upsert(indexed)
 
     def search(
         self,
@@ -40,10 +41,11 @@ class Retriever:
         metadata_filter: dict[str, str] | None = None,
         rerank: bool = False,
     ) -> list[RetrievalResult]:
-        if not self.chunks:
+        chunks = self.store.all_chunks()
+        if not chunks:
             return []
         query_embedding = self.embedder.embed(query)
-        candidates = [chunk for chunk in self.chunks if self._matches(chunk, metadata_filter)]
+        candidates = [chunk for chunk in chunks if self._matches(chunk, metadata_filter)]
         scored = [RetrievalResult(chunk=chunk, score=self._similarity(query_embedding, chunk.embedding)) for chunk in candidates]
         scored.sort(key=lambda item: item.score, reverse=True)
         selected = scored[:top_k]
@@ -62,6 +64,8 @@ class Retriever:
         return sum(a * b for a, b in zip(left_values, right_values))
 
     def _rerank(self, query: str, scored: list[RetrievalResult]) -> list[RetrievalResult]:
+        import re
+
         query_tokens = set(re.findall(r"[a-z0-9]+", query.lower()))
         rescored = []
         for item in scored:
