@@ -10,6 +10,7 @@ from app.ingestion.chunking import ChunkingPipeline
 from app.prompts.registry import get_prompt
 from app.services.agent import Agent
 from app.services.llm import LLMClient, LiteLLMBackend
+from app.services.memory import ConversationMemory
 from app.services.retriever import Retriever
 from app.services.vector_store import PgVectorStore, SQLiteVectorStore
 from app.tools.base import ToolRegistry
@@ -48,12 +49,18 @@ def create_app() -> FastAPI:
         retry_count=settings.llm_retry_count,
         timeout_s=settings.llm_timeout_s,
     )
+    memory = ConversationMemory(window_size=6, summary_trigger=12, max_summary_chars=600)
     agent = Agent(
         llm=llm,
         tools=tools,
         evaluator=Evaluator(),
+        memory=memory,
         max_steps=settings.max_agent_steps,
         confidence_threshold=settings.confidence_threshold,
+        retrieval_top_k=settings.retrieval_top_k,
+        enable_reranking=settings.enable_reranking,
+        planner_model=settings.planner_model,
+        answer_model=settings.answer_model,
     )
 
     app = FastAPI(title=settings.app_name)

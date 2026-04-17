@@ -14,10 +14,13 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://support:support@localhost:5432/support_agent"
     llm_provider: str = "openai"
     llm_model: str = "gpt-4o-mini"
+    planner_model: str = "gpt-4o-mini"
+    answer_model: str = "gpt-4o"
     llm_temperature: float = 0.0
     llm_timeout_s: float = 12.0
     llm_retry_count: int = 2
     retrieval_top_k: int = 4
+    retrieval_rerank_k: int = 10
     vector_store_path: str = "./data/vector_store.sqlite3"
     pgvector_dimension: int = 64
     confidence_threshold: float = 0.62

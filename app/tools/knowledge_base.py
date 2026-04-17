@@ -16,8 +16,9 @@ class SearchDocsTool(Tool):
     def execute(self, **kwargs: Any) -> ToolResult:
         query = str(kwargs.get("query", ""))
         top_k = int(kwargs.get("top_k", 4))
+        rerank = bool(kwargs.get("rerank", False))
         metadata_filter = kwargs.get("metadata_filter")
-        results = self.retriever.search(query=query, top_k=top_k, metadata_filter=metadata_filter)
+        results = self.retriever.search(query=query, top_k=top_k, metadata_filter=metadata_filter, rerank=rerank)
         payload = [
             {
                 "chunk_id": result.chunk.chunk_id,

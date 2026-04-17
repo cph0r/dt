@@ -43,6 +43,15 @@ class LiteLLMBackend:
     def _mock_completion(self, messages: list[dict[str, str]]) -> str:
         last_user = next((message["content"] for message in reversed(messages) if message["role"] == "user"), "")
         lowered = last_user.lower()
+        if "synthesize_answer" in lowered:
+            return json.dumps(
+                {
+                    "decision": "answer",
+                    "confidence": 0.86,
+                    "answer": "Based on retrieved docs, follow the documented support steps in the cited section.",
+                    "tool": None,
+                }
+            )
         if any(token in lowered for token in ("refund", "reset", "password", "invoice")):
             payload = {
                 "decision": "search_docs",
@@ -69,6 +78,9 @@ class LLMClient:
         self.logger = get_logger(__name__)
 
     def complete(self, messages: list[dict[str, str]], temperature: float = 0.0) -> dict[str, Any]:
+        return self.complete_with_model(self.model, messages, temperature=temperature)
+
+    def complete_with_model(self, model: str, messages: list[dict[str, str]], temperature: float = 0.0) -> dict[str, Any]:
         deadline = time.monotonic() + self.timeout_s
         attempt = 0
         last_error: Exception | None = None
@@ -79,17 +91,24 @@ class LLMClient:
                 if remaining <= 0:
                     raise TimeoutError("LLM request timed out")
                 start = time.monotonic()
-                raw = self.backend.complete(self.model, messages, temperature=temperature)
+                raw = self.backend.complete(model, messages, temperature=temperature)
                 latency_ms = round((time.monotonic() - start) * 1000, 2)
-                self.logger.info("llm_completion", extra={"event": "llm_completion", "latency_ms": latency_ms})
+                self.logger.info(
+                    "llm_completion",
+                    extra={"event": "llm_completion", "latency_ms": latency_ms, "step": attempt},
+                )
                 parsed = self._parse(raw)
                 parsed["raw"] = raw
-                parsed["model"] = self.model
+                parsed["model"] = model
                 return parsed
             except Exception as exc:  # pragma: no cover - safety fallback
                 last_error = exc
                 if attempt > self.retry_count:
                     break
+                self.logger.warning(
+                    "llm_retry",
+                    extra={"event": "llm_retry", "step": attempt, "failure_reason": str(exc)},
+                )
                 time.sleep(min(0.2 * attempt, 0.5))
         raise RuntimeError("LLM completion failed") from last_error
 
